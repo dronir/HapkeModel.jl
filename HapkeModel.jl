@@ -44,8 +44,16 @@ end
 
 type ScatteringModel
 	p::PhaseFunction
-	w::Real
+	w::Float64
+	shadows::Bool
+	hS::Float64
+	P_const::Float64
 end
+
+ScatteringModel(p::PhaseFunction, w::Real) = ScatteringModel(p,w,false,0.0,Hapke_P_const(p))
+ScatteringModel(p::PhaseFunction, w::Real, h::Real) = ScatteringModel(p,w,true,h,Hapke_P_const(p))
+ScatteringModel(p::PhaseFunction, w::Real, E::Real, a::Real, phi::Real) = ScatteringModel(p,w,true,hS(E,a,phi),Hapke_P_const(p))
+
 
 # Hapke's H-function approximation (eq. 13)
 function H(x::Real, w::Real)
@@ -55,33 +63,33 @@ function H(x::Real, w::Real)
 end
 
 
-global const MAX_ITER = 20
-# A coefficients for series representations
-A(n::Integer) = n%2==0 ? 0.0 : (-1)^((n+1)/2)/n * reduce(*, 1:2:n) / reduce(*, 2:2:n+1) # Eq. 26-27
-
-# b coefficients for series representations
-b(n::Integer, p::HenyeyGreenstein) = (2n-1)*(-p.xi)^n
-b(n::Integer, p::DoubleHenyeyGreenstein) = p.c * (2n+1) * p.xi^n
-
-# Hapke P function and P constant for the isotropic and Rayleigh phase functions
+# Hapke P function and 'P' constant are unity for the isotropic and Rayleigh phase functions
 Hapke_P(p::UnitP, mu::Real) = 1.0
 Hapke_P_const(p::UnitP) = 1.0
 
-# Hapke P function and P constant for the single and double HG phase functions
+global const MAX_ITER = 20
+# A coefficients for P function series representations, eq. 26-27
+A(n::Integer) = n%2==0 ? 0.0 : (-1)^((n+1)/2)/n * reduce(*, 1:2:n) / reduce(*, 2:2:n+1)
+
+# b coefficients for P function series representations
+b(n::Integer, p::HenyeyGreenstein) = (2n-1)*(-p.xi)^n
+b(n::Integer, p::DoubleHenyeyGreenstein) = p.c * (2n+1) * p.xi^n
+
+# Hapke P function and 'P' constant for the single and double HG phase functions
 Hapke_P(p::SeriesP, mu::Real) = 1.0 + sum(i -> A(i) * b(i, p) * P(i, mu), 1:MAX_ITER)
 Hapke_P_const(p::SeriesP) = 1.0 - sum(i -> A(i)^2 * b(i, p), 1:MAX_ITER)
 
-# Hapke M function for HG phase function (eq. 17)
+# Hapke M function (eq. 17)
 function M(model::ScatteringModel, mu0::Real, mu::Real) 
 	h = H(mu, model.w) - 1
 	h0 = H(mu0, model.w) - 1
-	return h*Hapke_P(model.p, mu0) + h0*Hapke_P(model.p, mu) + Hapke_P_const(model.p) * h * h0
+	return h*Hapke_P(model.p, mu0) + h0*Hapke_P(model.p, mu) + model.P_const * h * h0
 end
 
 
 # Shadow hiding opposition effect term
 B_S(g::Real, hS::Real) = 1/(1 + (1/hS)*tan(g/2)) # eq. 29
-hS(E::Real, a::Real, phi::Real) = -E * a * ln(1-phi) / (2phi) # eq. 30
+hS(E::Real, a::Real, phi::Real) = -E * a * log(1-phi) / (2phi) # eq. 30
 
 # The different phase functions
 phase(p::Isotropic, g::Real) = 1.0
@@ -96,7 +104,11 @@ end
 
 
 function BDRF(model::ScatteringModel, mu0::Real, mu::Real, g::Real)
-	return model.w/(4pi) * mu0/(mu+mu0) * (phase(model.p, g) + M(model, mu0, mu))
+	if model.shadows
+		return model.w/(4pi) * mu0/(mu+mu0) * (phase(model.p, g)*B_S(g, model.hS) + M(model, mu0, mu))
+	else
+		return model.w/(4pi) * mu0/(mu+mu0) * (phase(model.p, g) + M(model, mu0, mu))
+	end
 end
 
 
