@@ -47,11 +47,12 @@ type ScatteringModel
 	w::Float64
 	shadows::Bool
 	hS::Float64
+	P_const::Float64
 end
 
-ScatteringModel(p::PhaseFunction, w::Real) = ScatteringModel(p,w,false,0.0)
-ScatteringModel(p::PhaseFunction, w::Real, h::Real) = ScatteringModel(p,w,true,h)
-ScatteringModel(p::PhaseFunction, w::Real, E::Real, a::Real, phi::Real) = ScatteringModel(p,w,true,hS(E,a,phi))
+ScatteringModel(p::PhaseFunction, w::Real) = ScatteringModel(p,w,false,0.0,Hapke_P_const(p))
+ScatteringModel(p::PhaseFunction, w::Real, h::Real) = ScatteringModel(p,w,true,h,Hapke_P_const(p))
+ScatteringModel(p::PhaseFunction, w::Real, E::Real, a::Real, phi::Real) = ScatteringModel(p,w,true,hS(E,a,phi),Hapke_P_const(p))
 
 
 # Hapke's H-function approximation (eq. 13)
@@ -82,7 +83,7 @@ Hapke_P_const(p::SeriesP) = 1.0 - sum(i -> A(i)^2 * b(i, p), 1:MAX_ITER)
 function M(model::ScatteringModel, mu0::Real, mu::Real) 
 	h = H(mu, model.w) - 1
 	h0 = H(mu0, model.w) - 1
-	return h*Hapke_P(model.p, mu0) + h0*Hapke_P(model.p, mu) + Hapke_P_const(model.p) * h * h0
+	return h*Hapke_P(model.p, mu0) + h0*Hapke_P(model.p, mu) + model.P_const * h * h0
 end
 
 
