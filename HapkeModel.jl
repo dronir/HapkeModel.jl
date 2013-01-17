@@ -44,8 +44,15 @@ end
 
 type ScatteringModel
 	p::PhaseFunction
-	w::Real
+	w::Float64
+	shadows::Bool
+	hS::Float64
 end
+
+ScatteringModel(p::PhaseFunction, w::Real) = ScatteringModel(p,w,false,0.0)
+ScatteringModel(p::PhaseFunction, w::Real, h::Real) = ScatteringModel(p,w,true,h)
+ScatteringModel(p::PhaseFunction, w::Real, E::Real, a::Real, phi::Real) = ScatteringModel(p,w,true,hS(E,a,phi))
+
 
 # Hapke's H-function approximation (eq. 13)
 function H(x::Real, w::Real)
@@ -81,7 +88,7 @@ end
 
 # Shadow hiding opposition effect term
 B_S(g::Real, hS::Real) = 1/(1 + (1/hS)*tan(g/2)) # eq. 29
-hS(E::Real, a::Real, phi::Real) = -E * a * ln(1-phi) / (2phi) # eq. 30
+hS(E::Real, a::Real, phi::Real) = -E * a * log(1-phi) / (2phi) # eq. 30
 
 # The different phase functions
 phase(p::Isotropic, g::Real) = 1.0
@@ -96,7 +103,11 @@ end
 
 
 function BDRF(model::ScatteringModel, mu0::Real, mu::Real, g::Real)
-	return model.w/(4pi) * mu0/(mu+mu0) * (phase(model.p, g) + M(model, mu0, mu))
+	if model.shadows
+		return model.w/(4pi) * mu0/(mu+mu0) * (phase(model.p, g)*B_S(g, model.hS) + M(model, mu0, mu))
+	else
+		return model.w/(4pi) * mu0/(mu+mu0) * (phase(model.p, g) + M(model, mu0, mu))
+	end
 end
 
 
