@@ -91,7 +91,7 @@ function phase(p::DoubleHenyeyGreenstein, g::Real)
 	a = (1 - p.xi^2)
 	HG1 = a / (1 + p.xi^2 + 2*p.xi*cos(g))^1.5
 	HG2 = a / (1 + p.xi^2 - 2*p.xi*cos(g))^1.5
-	return (1+c)/2 * HG1 + (1-c)/2 * HG2
+	return (1+p.c)/2 * HG1 + (1-p.c)/2 * HG2
 end
 
 
