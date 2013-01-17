@@ -64,9 +64,18 @@ end
 B_S(g::Real, hS::Real) = 1/(1 + (1/hS)*tan(g/2)) # eq. 29
 hS(E::Real, a::Real, phi::Real) = -E * a * ln(1-phi) / (2phi) # eq. 30
 
+phase(p::Isotropic, g::Real) = 1.0
+phase(p::Rayleigh, g::Real) = 1.0 + 0.5 * P(2, cos(g))
+phase(p::HenyeyGreenstein, g::Real) = (1 - p.xi^2) / (1 + p.xi^2 + 2*p.xi*cos(g))^1.5
+function phase(p::DoubleHenyeyGreenstein, g::Real)
+	a = (1 - p.xi^2)
+	HG1 = a / (1 + p.xi^2 + 2*p.xi*cos(g))^1.5
+	HG2 = a / (1 + p.xi^2 - 2*p.xi*cos(g))^1.5
+	return (1+c)/2 * HG1 + (1-c)/2 * HG2
+end
 
-function BDRF(mu::Real, mu0::Real, g::Real, w::Real, p::Function)
-	return w/(4pi) * mu0/(mu+mu0) * (p(g) * B_sh(g) + M(mu, mu0)) * B_CB(g)
+function BDRF(mu::Real, mu0::Real, g::Real, w::Real, p::PhaseFunction)
+	return w/(4pi) * mu0/(mu+mu0) * (p(g) + M(mu, mu0))
 end
 
 
