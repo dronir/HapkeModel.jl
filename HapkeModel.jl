@@ -9,7 +9,9 @@ module HapkeModel
 require("legendre.jl")
 using LegendrePolynomial
 
-export BDRF
+export Isotropic, Rayleigh, HenyeyGreenstein, DoubleHenyeyGreenstein
+export ConstantP, SeriesP, PhaseFunction
+export ScatteringModel, BDRF
 
 # Hapke's notation, followed in the code:
 # w = single-scattering albedo
@@ -23,18 +25,27 @@ export BDRF
 # Define some types for phase functions
 abstract PhaseFunction
 
-type Isotropic <: PhaseFunction end
-type Rayleigh <: PhaseFunction end
+# Group phase functions into two types: those for which P(mu) and the P-constant
+# are unity, and those for which it is expressed as a Legendre polynomial series
+abstract ConstantP <: PhaseFunction
+abstract SeriesP <: PhaseFunction
 
-type HenyeyGreenstein <: PhaseFunction 
+type Isotropic <: ConstantP end
+type Rayleigh <: ConstantP end
+
+type HenyeyGreenstein <: SeriesP
 	xi::Float64
 end
 
-type DoubleHenyeyGreenstein <: PhaseFunction 
+type DoubleHenyeyGreenstein <: SeriesP
 	c::Float64
 	xi::Float64
 end
 
+type ScatteringModel
+	p::PhaseFunction
+	w::Real
+end
 
 # Hapke's H-function approximation (eq. 13)
 function H(x::Real, w::Real)
@@ -43,20 +54,28 @@ function H(x::Real, w::Real)
 	return 1/(1 - w*x*(r0 + (1 - 2*r0*x)/2 * log((1+x)/x)))
 end
 
-# Coefficient for hapke P function series expansion
-global const MAX_ITER = 20
-A(n::Integer) = n%2==0 ? 0.0 : (-1)^((n+1)/2)/n * reduce(*, 1:2:n) / reduce(*, 2:2:n+1) # Eq. 26-27
-b(n::Integer, xi::Real) = (2n-1)*(-xi)^n # For HG function
 
-# Series definitions (eq. 23-25)
-Hapke_P(xi::Real, mu::Real) = 1.0 + sum(i->A(i)*b(i, xi)*P(i, mu), 1:MAX_ITER)
-Hapke_P_const(xi::Real) = 1.0 - sum(i->A(i)^2*b(i,xi), 1:MAX_ITER)
+global const MAX_ITER = 20
+# A coefficients for series representations
+A(n::Integer) = n%2==0 ? 0.0 : (-1)^((n+1)/2)/n * reduce(*, 1:2:n) / reduce(*, 2:2:n+1) # Eq. 26-27
+
+# b coefficients for series representations
+b(n::Integer, p::HenyeyGreenstein) = (2n-1)*(-p.xi)^n
+b(n::Integer, p::DoubleHenyeyGreenstein) = p.c * (2n+1) * p.xi^n
+
+# Isotropic and Rayleigh phase function
+Hapke_P(p::ConstantP, mu::Real) = 1.0
+Hapke_P_const(p::ConstantP) = 1.0
+
+# Single HG phase function
+Hapke_P(p::SeriesP, mu::Real) = 1.0 + sum(i -> A(i) * b(i, p) * P(i, mu), 1:MAX_ITER)
+Hapke_P_const(p::SeriesP) = 1.0 - sum(i -> A(i)^2 * b(i, p), 1:MAX_ITER)
 
 # Hapke M function for HG phase function (eq. 17)
-function M(xi::Real, mu::Real, mu0::Real) 
-	h = H(mu) - 1
-	h0 = H(mu0) - 1
-	return h*Hapke_P(xi, mu0) + h0*Hapke_P(xi, mu) + Hapke_P_const(xi) * h * h0
+function M(model::ScatteringModel, mu0::Real, mu::Real) 
+	h = H(mu, model.w) - 1
+	h0 = H(mu0, model.w) - 1
+	return h*Hapke_P(model.p, mu0) + h0*Hapke_P(model.p, mu) + Hapke_P_const(model.p) * h * h0
 end
 
 
@@ -64,6 +83,7 @@ end
 B_S(g::Real, hS::Real) = 1/(1 + (1/hS)*tan(g/2)) # eq. 29
 hS(E::Real, a::Real, phi::Real) = -E * a * ln(1-phi) / (2phi) # eq. 30
 
+# The different phase functions
 phase(p::Isotropic, g::Real) = 1.0
 phase(p::Rayleigh, g::Real) = 1.0 + 0.5 * P(2, cos(g))
 phase(p::HenyeyGreenstein, g::Real) = (1 - p.xi^2) / (1 + p.xi^2 + 2*p.xi*cos(g))^1.5
@@ -74,8 +94,9 @@ function phase(p::DoubleHenyeyGreenstein, g::Real)
 	return (1+c)/2 * HG1 + (1-c)/2 * HG2
 end
 
-function BDRF(mu::Real, mu0::Real, g::Real, w::Real, p::PhaseFunction)
-	return w/(4pi) * mu0/(mu+mu0) * (p(g) + M(mu, mu0))
+
+function BDRF(model::ScatteringModel, mu0::Real, mu::Real, g::Real)
+	return model.w/(4pi) * mu0/(mu+mu0) * (phase(model.p, g) + M(model, mu0, mu))
 end
 
 
