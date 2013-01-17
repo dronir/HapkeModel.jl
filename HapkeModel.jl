@@ -45,14 +45,14 @@ end
 
 # Coefficient for hapke P function series expansion
 global const MAX_ITER = 20
-A(n::Integer) = n%2==0 ? 0.0 : (-1)^((n+1)/2)/n * reduce(*, 1:2:n) / reduce(*, 2:2:n+1) # Hapke eq. 26-27
+A(n::Integer) = n%2==0 ? 0.0 : (-1)^((n+1)/2)/n * reduce(*, 1:2:n) / reduce(*, 2:2:n+1) # Eq. 26-27
 b(n::Integer, xi::Real) = (2n-1)*(-xi)^n # For HG function
 
-# Series definitions
+# Series definitions (eq. 23-25)
 Hapke_P(xi::Real, mu::Real) = 1.0 + sum(i->A(i)*b(i, xi)*P(i, mu), 1:MAX_ITER)
 Hapke_P_const(xi::Real) = 1.0 - sum(i->A(i)^2*b(i,xi), 1:MAX_ITER)
 
-# Hapke M function for HG phase function
+# Hapke M function for HG phase function (eq. 17)
 function M(xi::Real, mu::Real, mu0::Real) 
 	h = H(mu) - 1
 	h0 = H(mu0) - 1
@@ -60,6 +60,9 @@ function M(xi::Real, mu::Real, mu0::Real)
 end
 
 
+# Shadow hiding opposition effect term
+B_S(g::Real, hS::Real) = 1/(1 + (1/hS)*tan(g/2)) # eq. 29
+hS(E::Real, a::Real, phi::Real) = -E * a * ln(1-phi) / (2phi) # eq. 30
 
 
 function BDRF(mu::Real, mu0::Real, g::Real, w::Real, p::Function)
