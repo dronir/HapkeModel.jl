@@ -10,7 +10,7 @@ require("legendre.jl")
 using LegendrePolynomial
 
 export Isotropic, Rayleigh, HenyeyGreenstein, DoubleHenyeyGreenstein
-export ConstantP, SeriesP, PhaseFunction
+export UnitP, SeriesP, PhaseFunction
 export ScatteringModel, BDRF
 
 # Hapke's notation, followed in the code:
@@ -27,11 +27,11 @@ abstract PhaseFunction
 
 # Group phase functions into two types: those for which P(mu) and the P-constant
 # are unity, and those for which it is expressed as a Legendre polynomial series
-abstract ConstantP <: PhaseFunction
+abstract UnitP <: PhaseFunction
 abstract SeriesP <: PhaseFunction
 
-type Isotropic <: ConstantP end
-type Rayleigh <: ConstantP end
+type Isotropic <: UnitP end
+type Rayleigh <: UnitP end
 
 type HenyeyGreenstein <: SeriesP
 	xi::Float64
@@ -63,11 +63,11 @@ A(n::Integer) = n%2==0 ? 0.0 : (-1)^((n+1)/2)/n * reduce(*, 1:2:n) / reduce(*, 2
 b(n::Integer, p::HenyeyGreenstein) = (2n-1)*(-p.xi)^n
 b(n::Integer, p::DoubleHenyeyGreenstein) = p.c * (2n+1) * p.xi^n
 
-# Isotropic and Rayleigh phase function
-Hapke_P(p::ConstantP, mu::Real) = 1.0
-Hapke_P_const(p::ConstantP) = 1.0
+# Hapke P function and P constant for the isotropic and Rayleigh phase functions
+Hapke_P(p::UnitP, mu::Real) = 1.0
+Hapke_P_const(p::UnitP) = 1.0
 
-# Single HG phase function
+# Hapke P function and P constant for the single and double HG phase functions
 Hapke_P(p::SeriesP, mu::Real) = 1.0 + sum(i -> A(i) * b(i, p) * P(i, mu), 1:MAX_ITER)
 Hapke_P_const(p::SeriesP) = 1.0 - sum(i -> A(i)^2 * b(i, p), 1:MAX_ITER)
 
