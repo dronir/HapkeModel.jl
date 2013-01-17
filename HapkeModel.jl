@@ -62,23 +62,23 @@ function H(x::Real, w::Real)
 end
 
 
-global const MAX_ITER = 20
-# A coefficients for series representations
-A(n::Integer) = n%2==0 ? 0.0 : (-1)^((n+1)/2)/n * reduce(*, 1:2:n) / reduce(*, 2:2:n+1) # Eq. 26-27
-
-# b coefficients for series representations
-b(n::Integer, p::HenyeyGreenstein) = (2n-1)*(-p.xi)^n
-b(n::Integer, p::DoubleHenyeyGreenstein) = p.c * (2n+1) * p.xi^n
-
-# Hapke P function and P constant for the isotropic and Rayleigh phase functions
+# Hapke P function and 'P' constant are unity for the isotropic and Rayleigh phase functions
 Hapke_P(p::UnitP, mu::Real) = 1.0
 Hapke_P_const(p::UnitP) = 1.0
 
-# Hapke P function and P constant for the single and double HG phase functions
+global const MAX_ITER = 20
+# A coefficients for P function series representations, eq. 26-27
+A(n::Integer) = n%2==0 ? 0.0 : (-1)^((n+1)/2)/n * reduce(*, 1:2:n) / reduce(*, 2:2:n+1)
+
+# b coefficients for P function series representations
+b(n::Integer, p::HenyeyGreenstein) = (2n-1)*(-p.xi)^n
+b(n::Integer, p::DoubleHenyeyGreenstein) = p.c * (2n+1) * p.xi^n
+
+# Hapke P function and 'P' constant for the single and double HG phase functions
 Hapke_P(p::SeriesP, mu::Real) = 1.0 + sum(i -> A(i) * b(i, p) * P(i, mu), 1:MAX_ITER)
 Hapke_P_const(p::SeriesP) = 1.0 - sum(i -> A(i)^2 * b(i, p), 1:MAX_ITER)
 
-# Hapke M function for HG phase function (eq. 17)
+# Hapke M function (eq. 17)
 function M(model::ScatteringModel, mu0::Real, mu::Real) 
 	h = H(mu, model.w) - 1
 	h0 = H(mu0, model.w) - 1
