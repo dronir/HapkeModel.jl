@@ -5,10 +5,13 @@
 - working BDRF computation, not with full model
 
 ## Version 0.2
-- Full model
-- README File with some instructions
+- Model without shadowing and CBM
+- README file with some instructions
 
 ## Version 0.3
+- Model with proper shadowing and CBM(?)
+
+## Version 0.4
 - Some automatic tests
 
 ## Version 1.0
