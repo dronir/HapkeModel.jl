@@ -16,7 +16,7 @@ function P(n::Integer, m::Integer, t::Real)
 	end
 	
 	if n==1 && m==0
-		return t
+		return Float64(t)
 	end
 
 	if n==2 && m==0
