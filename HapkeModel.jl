@@ -4,9 +4,10 @@
 #  and anisotropic scattering (2002), Icarus 157, 523-534, doi:10.1006/icar.2002.6853
 # References to equations are to this paper.
 
+include("legendre.jl")
+
 module HapkeModel
 
-require("legendre.jl")
 using LegendrePolynomial
 
 export Isotropic, Rayleigh, HenyeyGreenstein, DoubleHenyeyGreenstein
@@ -23,27 +24,27 @@ export ScatteringModel, BDRF
 # xi = Henyey-Greenstein asymmetry parameter
 
 # Define some types for phase functions
-abstract PhaseFunction
+abstract type PhaseFunction end
 
 # Group phase functions into two types: those for which P(mu) and the P-constant
 # are unity, and those for which it is expressed as a Legendre polynomial series
-abstract UnitP <: PhaseFunction
-abstract SeriesP <: PhaseFunction
+abstract type UnitP <: PhaseFunction end
+abstract type SeriesP <: PhaseFunction end
 
-type Isotropic <: UnitP end
-type Rayleigh <: UnitP end
+struct Isotropic <: UnitP end
+struct Rayleigh <: UnitP end
 
-type HenyeyGreenstein <: SeriesP
+struct HenyeyGreenstein <: SeriesP
 	xi::Float64
 end
 
-type DoubleHenyeyGreenstein <: SeriesP
+struct DoubleHenyeyGreenstein <: SeriesP
 	c::Float64
 	xi::Float64
 end
 
-type ScatteringModel
-	p::PhaseFunction
+struct ScatteringModel{P<:PhaseFunction}
+	p::P
 	w::Float64
 	shadows::Bool
 	hS::Float64
@@ -57,8 +58,8 @@ ScatteringModel(p::PhaseFunction, w::Real, E::Real, a::Real, phi::Real) = Scatte
 
 # Hapke's H-function approximation (eq. 13)
 function H(x::Real, w::Real)
-	gamma = sqrt(1-w)
-	r0 = (1-gamma) / (1+gamma)
+	gamma = sqrt(1.0 - w)
+	r0 = (1-gamma) / (1.0 + gamma)
 	return 1/(1 - w*x*(r0 + (1 - 2*r0*x)/2 * log((1+x)/x)))
 end
 
@@ -67,7 +68,8 @@ end
 Hapke_P(p::UnitP, mu::Real) = 1.0
 Hapke_P_const(p::UnitP) = 1.0
 
-global const MAX_ITER = 20
+const MAX_ITER = 20
+
 # A coefficients for P function series representations, eq. 26-27
 A(n::Integer) = n%2==0 ? 0.0 : (-1)^((n+1)/2)/n * reduce(*, 1:2:n) / reduce(*, 2:2:n+1)
 
